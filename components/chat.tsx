@@ -170,25 +170,35 @@ export function Chat({ supabase }: { supabase: any }) {
     <Card className="w-[500px]">
       <CardHeader>
         <CardTitle>Welcome</CardTitle>
-        <span className="font-base text-md">
-          {user?.firstName} {user?.lastName}
-        </span>
+        {user ? (
+          <span className="font-base text-md">
+            {user?.firstName} {user?.lastName}
+          </span>
+        ) : (
+          <span className="font-base text-md">
+            Please log in to view messages
+          </span>
+        )}
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSendMessage}>
-          <div className="flex flex-col gap-2">
-            <Input
-              placeholder="Enter your message"
-              onChange={(e) => setNewMessage(e.target.value)}
-            />
-            <div>
-              <Button type="submit">Send</Button>
+        {user && (
+          <>
+            <form onSubmit={handleSendMessage}>
+              <div className="flex flex-col gap-2">
+                <Input
+                  placeholder="Enter your message"
+                  onChange={(e) => setNewMessage(e.target.value)}
+                />
+                <div>
+                  <Button type="submit">Send</Button>
+                </div>
+              </div>
+            </form>
+            <div className="mt-6">
+              <ChatView data={data} />
             </div>
-          </div>
-        </form>
-        <div className="mt-6">
-          <ChatView data={data} />
-        </div>
+          </>
+        )}
       </CardContent>
       <CardFooter className="flex justify-between"></CardFooter>
     </Card>
