@@ -38,13 +38,19 @@ export function Chat({ supabase }: { supabase: any }) {
   const [data, setData] = useState<ChatMessage[]>([]);
   const [avatars, setAvatars] = useState<Record<string, string>>({});
   const [newMessage, setNewMessage] = useState<string>("");
+  const [chatId, setChatId] = useState<string>(
+    "4113f429-c4ad-42aa-b43f-0a2bcafaeaa5"
+  );
   const userContext = useUser();
 
   const user = userContext ? userContext.user : null;
   const signOut = userContext ? userContext.signOut : null;
 
   const getData = async () => {
-    const { data } = await supabase.from("chat_messages").select();
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .select()
+      .eq("chat_id", chatId); // only select messages where chat_id equals the current chat room's ID
 
     if (data) {
       setData(data);
@@ -85,10 +91,12 @@ export function Chat({ supabase }: { supabase: any }) {
       .insert({
         sender_id: user?.id, // replace with the actual sender_id
         content: newMessage,
+        chat_id: chatId,
       })
       .single();
 
-    setNewMessage(""); // Clear the input after sending
+    setNewMessage(""); // Clear the input after sending the message
+    e.target.reset(); // Clear the form after sending the message
   };
 
   useEffect(() => {
@@ -118,10 +126,31 @@ export function Chat({ supabase }: { supabase: any }) {
   const ChatView = ({ data }: { data: ChatMessage[] }) => {
     const userContext = useUser();
     const userId = userContext ? userContext.user?.id : null;
+    const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(
+      null
+    );
 
     const sortedData = [...data].sort(
       (a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
     );
+
+    const handleDeleteMessage = async (id: string) => {
+      if (
+        window.confirm(`Are you sure you want to delete this message? ${id}`)
+      ) {
+        const { data, error } = await supabase
+          .from("chat_messages")
+          .delete()
+          .eq("id", id);
+
+        if (error) {
+          console.error("Error deleting message", error);
+        } else {
+          // refresh data after deleting message
+          getData();
+        }
+      }
+    };
 
     return (
       <div className="w-full border rounded-lg h-[400px] overflow-y-scroll p-4 flex flex-col">
@@ -131,19 +160,23 @@ export function Chat({ supabase }: { supabase: any }) {
             className={`w-full mb-2 flex items-start ${
               userId === item.sender_id ? "justify-end" : "justify-start"
             }`}
+            onMouseEnter={() => setHoveredMessageId(item.id)}
+            onMouseLeave={() => setHoveredMessageId(null)}
           >
-            <div style={{ maxWidth: "75%" }} className="flex gap-1 items-end">
+            <div
+              style={{ maxWidth: "75%" }}
+              className="flex gap-1 items-end relative"
+            >
               {userId !== item.sender_id && (
                 <div className="w-6 h-6 bg-cover bg-center rounded-full overflow-hidden flex-shrink-0">
                   <img src={avatars[item.sender_id] || ""} />
                 </div>
               )}
               <div>
-                <div className="text-[11px] text-gray-300 pr-3 pl-3  text-right ">
+                <div className="text-[11px] text-gray-300 pr-3 pl-3 text-right">
                   {new Date(item.sent_at).toLocaleString("en-US", {
                     month: "short",
                     day: "numeric",
-                    // year: "numeric",
                     hour: "numeric",
                     minute: "numeric",
                     hour12: true,
@@ -156,6 +189,15 @@ export function Chat({ supabase }: { supabase: any }) {
                       : "bg-gray-300 text-black"
                   } rounded-2xl px-3 py-2 break-words text-sm`}
                 >
+                  {userId === item.sender_id &&
+                    hoveredMessageId === item.id && (
+                      <button
+                        onClick={() => handleDeleteMessage(item.id)}
+                        className="absolute bg-gray-800 text-white rounded-full w-4 h-4 focus:outline-none text-xs flex items-center justify-center top-0 right-0 transform translate-x-[10%] -translate-y-[-50%] pb-0.5"
+                      >
+                        x
+                      </button>
+                    )}
                   {item.content}
                 </div>
               </div>
