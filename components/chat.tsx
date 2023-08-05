@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 
+import { Alert } from "@/components/alert";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,6 +35,9 @@ type ChatMessage = {
   sent_at: string;
   updated_at: string;
 };
+
+const deleteChatMessage_AlertMessage =
+  "Are you sure you want to delete this message?";
 
 export function Chat({ supabase }: { supabase: any }) {
   const [data, setData] = useState<ChatMessage[]>([]);
@@ -135,20 +140,16 @@ export function Chat({ supabase }: { supabase: any }) {
     );
 
     const handleDeleteMessage = async (id: string) => {
-      if (
-        window.confirm(`Are you sure you want to delete this message? ${id}`)
-      ) {
-        const { data, error } = await supabase
-          .from("chat_messages")
-          .delete()
-          .eq("id", id);
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .delete()
+        .eq("id", id);
 
-        if (error) {
-          console.error("Error deleting message", error);
-        } else {
-          // refresh data after deleting message
-          getData();
-        }
+      if (error) {
+        console.error("Error deleting message", error);
+      } else {
+        // refresh data after deleting message
+        getData();
       }
     };
 
@@ -191,12 +192,18 @@ export function Chat({ supabase }: { supabase: any }) {
                 >
                   {userId === item.sender_id &&
                     hoveredMessageId === item.id && (
-                      <button
-                        onClick={() => handleDeleteMessage(item.id)}
-                        className="absolute bg-gray-800 text-white rounded-full w-4 h-4 focus:outline-none text-xs flex items-center justify-center top-0 right-0 transform translate-x-[10%] -translate-y-[-50%] pb-0.5"
-                      >
-                        x
-                      </button>
+                      <Alert
+                        action={handleDeleteMessage}
+                        item={item.id}
+                        message={deleteChatMessage_AlertMessage}
+                        title="Delete Message"
+                      />
+                      // <button
+                      //   onClick={() => handleDeleteMessage(item.id)}
+                      //   className="absolute bg-gray-800 text-white rounded-full w-4 h-4 focus:outline-none text-xs flex items-center justify-center top-0 right-0 transform translate-x-[10%] -translate-y-[-50%] pb-0.5"
+                      // >
+                      //   x
+                      // </button>
                     )}
                   {item.content}
                 </div>
