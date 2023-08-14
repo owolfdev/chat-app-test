@@ -47,9 +47,6 @@ export default function Home() {
       <div className="sm:w-[500px]">
         {userContext?.user && <Chat supabase={supabase} />}
       </div>
-      {/* <div className="sm:w-[500px]">
-        <ChatReverseScroll supabase={supabase} />
-      </div> */}
     </section>
   );
 }
