@@ -20,8 +20,8 @@ type AlertProps = {
 
 export function Alert({ action, item, message, title }: AlertProps) {
   const handleAction = () => {
-    console.log("action:", action);
-    console.log("item:", item);
+    // console.log("action:", action);
+    // console.log("item:", item);
     action(item);
   };
 
