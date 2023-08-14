@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { Chat } from "@/components/chat";
-import ChatReverseScroll from "@/components/chat-reverse-scroll";
+import Chat from "@/components/chat";
+// import ChatReverseScroll from "@/components/chat-reverse-scroll";
 
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
@@ -47,9 +47,9 @@ export default function Home() {
       <div className="sm:w-[500px]">
         <Chat supabase={supabase} />
       </div>
-      <div className="sm:w-[500px]">
+      {/* <div className="sm:w-[500px]">
         <ChatReverseScroll supabase={supabase} />
-      </div>
+      </div> */}
     </section>
   );
 }

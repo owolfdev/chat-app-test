@@ -1,18 +1,7 @@
 "use client";
-
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 import { Alert } from "@/components/alert";
-
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 
 import { useUser } from "@/lib/UserContext";
 
@@ -28,7 +17,12 @@ type ChatMessage = {
 const deleteChatMessage_AlertMessage =
   "Are you sure you want to delete this message?";
 
-export function Chat({ supabase }: { supabase: any }) {
+function Chat({ supabase }: { supabase: any }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [currentMessage, setCurrentMessage] = useState<string>("");
+  const bottomRef = useRef<null | HTMLDivElement>(null);
+
+  //
   const [data, setData] = useState<ChatMessage[]>([]);
   const [avatars, setAvatars] = useState<Record<string, string>>({});
   const [newMessage, setNewMessage] = useState<string>("");
@@ -37,7 +31,20 @@ export function Chat({ supabase }: { supabase: any }) {
   );
   const userContext = useUser();
 
+  const userId = userContext ? userContext.user?.id : null;
+
   const user = userContext ? userContext.user : null;
+
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getData();
+  }, []);
+
+  useEffect(() => {
+    setMessages(data.map((item) => item));
+    loadAvatars();
+  }, [data]);
 
   const getData = async () => {
     const { data, error } = await supabase
@@ -67,29 +74,39 @@ export function Chat({ supabase }: { supabase: any }) {
     }
   };
 
-  useEffect(() => {}, [newMessage]);
+  //   const sendMessage = async (e: any, newMessage:any) => {
+  //     e.preventDefault();
+  //     console.log("send message:", user?.id, newMessage);
+  //     const { data, error } = await supabase
+  //       .from("chat_messages")
+  //       .insert({
+  //         sender_id: user?.id,
+  //         content: newMessage,
+  //         chat_id: chatId,
+  //       })
+  //       .single();
+  //   };
 
-  useEffect(() => {
-    getData();
-  }, []);
-
-  useEffect(() => {
-    loadAvatars();
-  }, [data]);
-
-  const handleSendMessage = async (e: any) => {
+  const handleSend = async (e: any) => {
     e.preventDefault();
-    console.log("send message:", user?.id, newMessage);
-    const { data, error } = await supabase
-      .from("chat_messages")
-      .insert({
-        sender_id: user?.id,
-        content: newMessage,
+    if (currentMessage.trim() !== "" && user?.id) {
+      // Ensure user.id is defined
+      const formattedMessage = {
         chat_id: chatId,
-      })
-      .single();
-
-    setNewMessage("");
+        content: currentMessage.trim(),
+        sender_id: user.id,
+      };
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .insert({
+          sender_id: user?.id,
+          content: formattedMessage.content,
+          chat_id: chatId,
+        })
+        .single();
+      //   setMessages((prevMessages) => [...prevMessages, formattedMessage]);
+      setCurrentMessage("");
+    }
   };
 
   useEffect(() => {
@@ -98,7 +115,7 @@ export function Chat({ supabase }: { supabase: any }) {
     }
 
     const channel = supabase
-      .channel("schema-db-changes")
+      .channel("schema-db-changes-reverse-scroll")
       .on(
         "postgres_changes",
         {
@@ -115,128 +132,105 @@ export function Chat({ supabase }: { supabase: any }) {
     };
   }, [data]);
 
-  const ChatView = ({ data }: { data: ChatMessage[] }) => {
-    const userContext = useUser();
-    const userId = userContext ? userContext.user?.id : null;
-    const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(
-      null
-    );
+  // Scroll to bottom whenever the messages array changes
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
-    const sortedData = [...data].sort(
-      (a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
-    );
+  const handleDeleteMessage = async (id: string) => {
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .delete()
+      .eq("id", id);
 
-    const handleDeleteMessage = async (id: string) => {
-      const { data, error } = await supabase
-        .from("chat_messages")
-        .delete()
-        .eq("id", id);
-
-      if (error) {
-        console.error("Error deleting message", error);
-      } else {
-        getData();
-      }
-    };
-
-    return (
-      <div className="w-full border rounded-lg h-[400px] overflow-y-scroll p-4 flex flex-col">
-        {sortedData.map((item, index) => (
-          <div
-            key={index}
-            className={`w-full mb-2 flex items-start ${
-              userId === item.sender_id ? "justify-end" : "justify-start"
-            }`}
-            onMouseEnter={() => setHoveredMessageId(item.id)}
-            onMouseLeave={() => setHoveredMessageId(null)}
-          >
-            <div
-              style={{ maxWidth: "75%" }}
-              className="flex gap-1 items-end relative"
-            >
-              {userId !== item.sender_id && (
-                <div className="w-6 h-6 bg-cover bg-center rounded-full overflow-hidden flex-shrink-0">
-                  <img src={avatars[item.sender_id] || ""} />
-                </div>
-              )}
-              <div>
-                <div className="text-[11px] text-gray-300 pr-3 pl-3 text-right">
-                  {new Date(item.sent_at).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "numeric",
-                    hour12: true,
-                  })}
-                </div>
-                <div
-                  className={`${
-                    userId === item.sender_id
-                      ? "bg-gray-600 text-white"
-                      : "bg-gray-300 text-black"
-                  } rounded-2xl px-3 py-2 break-words text-sm`}
-                >
-                  {userId === item.sender_id &&
-                    hoveredMessageId === item.id && (
-                      <Alert
-                        action={handleDeleteMessage}
-                        item={item.id}
-                        message={deleteChatMessage_AlertMessage}
-                        title="Delete Message"
-                      />
-                    )}
-                  {item.content}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    if (error) {
+      console.error("Error deleting message", error);
+    } else {
+      getData();
+    }
   };
 
   return (
-    <Card className="w-full mx-auto ">
-      <CardHeader>
-        <CardTitle>Welcome</CardTitle>
-        {user ? (
-          <span className="font-base text-md">
-            {user?.firstName} {user?.lastName}
-          </span>
-        ) : (
-          <span className="font-base text-md">
-            Please log in to view messages
-          </span>
-        )}
-      </CardHeader>
-      <CardContent>
-        {user && (
-          <>
-            <form onSubmit={handleSendMessage}>
-              <div className="flex flex-col gap-2">
-                <Input
-                  value={newMessage}
-                  className="w-full sm:w-auto"
-                  placeholder="Enter your message"
-                  onChange={(e) => setNewMessage(e.target.value)}
-                />
+    <div>
+      <div className="border border-gray-300 rounded-lg w-full  p-4 ">
+        <div className="overflow-y-auto h-64 mb-4 border rounded lg border-gray-200 pb-4 px-4">
+          {messages.map((item, index) => (
+            <div
+              key={index}
+              className={`w-full mb-2 flex items-start ${
+                userId === item.sender_id ? "justify-end" : "justify-start"
+              }`}
+              onMouseEnter={() => setHoveredMessageId(item.id)}
+              onMouseLeave={() => setHoveredMessageId(null)}
+            >
+              <div
+                style={{ maxWidth: "75%" }}
+                className="flex gap-1 items-end relative"
+              >
+                {userId !== item.sender_id && (
+                  <div className="w-6 h-6 bg-cover bg-center rounded-full overflow-hidden flex-shrink-0">
+                    <img src={avatars[item.sender_id] || ""} />
+                  </div>
+                )}
                 <div>
-                  <Button
-                    className="w-full sm:w-auto mt-2 sm:mt-0 sm:ml-2"
-                    type="submit"
+                  <div className="text-[11px] text-gray-300 pr-3 pl-3 text-right">
+                    {new Date(item.sent_at).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "numeric",
+                      hour12: true,
+                    })}
+                  </div>
+                  <div
+                    className={`${
+                      userId === item.sender_id
+                        ? "bg-gray-600 text-white"
+                        : "bg-gray-300 text-black"
+                    } rounded-2xl px-3 py-2 break-words text-sm`}
                   >
-                    Send
-                  </Button>
+                    {userId === item.sender_id &&
+                      hoveredMessageId === item.id && (
+                        <Alert
+                          action={handleDeleteMessage}
+                          item={item.id}
+                          message={deleteChatMessage_AlertMessage}
+                          title="Delete Message"
+                        />
+                      )}
+                    {item.content}
+                  </div>
                 </div>
               </div>
-            </form>
-            <div className="mt-6">
-              <ChatView data={data} />
             </div>
-          </>
-        )}
-      </CardContent>
-      <CardFooter className="flex justify-between"></CardFooter>
-    </Card>
+          ))}
+          {/* This is an invisible div, acting as a marker to scroll to */}
+          <div ref={bottomRef} />
+        </div>
+        <form action="" onSubmit={handleSend}>
+          <div className="flex items-center">
+            <input
+              type="text"
+              className="border rounded-l p-2 flex-1 outline-gray-400"
+              value={currentMessage}
+              onChange={(e) => setCurrentMessage(e.target.value)}
+              placeholder="Type a message..."
+            />
+
+            <button
+              type="submit"
+              // onClick={handleSend}
+              className="px-4 py-2 rounded-r border border-black bg-black text-white"
+            >
+              Send
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
+
+export default Chat;
