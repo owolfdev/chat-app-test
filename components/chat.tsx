@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 
 import { Alert } from "@/components/alert";
 
@@ -8,24 +8,13 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { useUser } from "@/lib/UserContext";
-import { Divide } from "lucide-react";
 
 type ChatMessage = {
   chat_id: string;
@@ -49,14 +38,12 @@ export function Chat({ supabase }: { supabase: any }) {
   const userContext = useUser();
 
   const user = userContext ? userContext.user : null;
-  const signOut = userContext ? userContext.signOut : null;
 
   const getData = async () => {
     const { data, error } = await supabase
       .from("chat_messages")
       .select()
-      .eq("chat_id", chatId); // only select messages where chat_id equals the current chat room's ID
-
+      .eq("chat_id", chatId);
     if (data) {
       setData(data);
     }
@@ -65,7 +52,7 @@ export function Chat({ supabase }: { supabase: any }) {
   };
 
   const loadAvatars = async () => {
-    const senderIds = Array.from(new Set(data.map((item) => item.sender_id))); // Gets unique sender
+    const senderIds = Array.from(new Set(data.map((item) => item.sender_id)));
     for (let id of senderIds) {
       const { data } = await supabase
         .from("profiles")
@@ -79,6 +66,8 @@ export function Chat({ supabase }: { supabase: any }) {
       }
     }
   };
+
+  useEffect(() => {}, [newMessage]);
 
   useEffect(() => {
     getData();
@@ -94,14 +83,13 @@ export function Chat({ supabase }: { supabase: any }) {
     const { data, error } = await supabase
       .from("chat_messages")
       .insert({
-        sender_id: user?.id, // replace with the actual sender_id
+        sender_id: user?.id,
         content: newMessage,
         chat_id: chatId,
       })
       .single();
 
-    setNewMessage(""); // Clear the input after sending the message
-    e.target.reset(); // Clear the form after sending the message
+    setNewMessage("");
   };
 
   useEffect(() => {
@@ -119,7 +107,6 @@ export function Chat({ supabase }: { supabase: any }) {
           table: "chat_messages",
         },
         (payload: any) => setData((messages) => [...messages, payload.new])
-        //(payload: any) => console.log("payload:", payload)
       )
       .subscribe();
 
@@ -148,7 +135,6 @@ export function Chat({ supabase }: { supabase: any }) {
       if (error) {
         console.error("Error deleting message", error);
       } else {
-        // refresh data after deleting message
         getData();
       }
     };
@@ -198,12 +184,6 @@ export function Chat({ supabase }: { supabase: any }) {
                         message={deleteChatMessage_AlertMessage}
                         title="Delete Message"
                       />
-                      // <button
-                      //   onClick={() => handleDeleteMessage(item.id)}
-                      //   className="absolute bg-gray-800 text-white rounded-full w-4 h-4 focus:outline-none text-xs flex items-center justify-center top-0 right-0 transform translate-x-[10%] -translate-y-[-50%] pb-0.5"
-                      // >
-                      //   x
-                      // </button>
                     )}
                   {item.content}
                 </div>
@@ -216,7 +196,7 @@ export function Chat({ supabase }: { supabase: any }) {
   };
 
   return (
-    <Card className="w-[500px]">
+    <Card className="w-full mx-auto ">
       <CardHeader>
         <CardTitle>Welcome</CardTitle>
         {user ? (
@@ -235,11 +215,18 @@ export function Chat({ supabase }: { supabase: any }) {
             <form onSubmit={handleSendMessage}>
               <div className="flex flex-col gap-2">
                 <Input
+                  value={newMessage}
+                  className="w-full sm:w-auto"
                   placeholder="Enter your message"
                   onChange={(e) => setNewMessage(e.target.value)}
                 />
                 <div>
-                  <Button type="submit">Send</Button>
+                  <Button
+                    className="w-full sm:w-auto mt-2 sm:mt-0 sm:ml-2"
+                    type="submit"
+                  >
+                    Send
+                  </Button>
                 </div>
               </div>
             </form>

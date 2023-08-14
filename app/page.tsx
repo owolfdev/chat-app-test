@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import { Chat } from "@/components/chat";
+import ChatReverseScroll from "@/components/chat-reverse-scroll";
+
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -26,10 +28,10 @@ export default function Home() {
   };
 
   return (
-    <section className="container flex flex-col items-center justify-center gap-6 pt-12 pb-8 ">
-      <div className="flex flex-col items-start gap-2">
+    <section className="container flex flex-col items-center justify-center gap-6 pt-12 pb-8 px-5 sm:px-8 md:px-12 ">
+      <div className="flex flex-col items-start gap-2 ">
         <div className="flex gap-2">
-          <h1 className="text-center w-full font-extrabold leading-tight tracking-tight text-5xl">
+          <h1 className="text-center w-full font-extrabold leading-tight tracking-tight text-5xl sm:text-4xl md:text-5xl">
             Chat App
           </h1>
           <div className="w-[150px] items-center flex">
@@ -42,8 +44,11 @@ export default function Home() {
           </div>
         </div>
       </div>
-      <div className="">
+      <div className="sm:w-[500px]">
         <Chat supabase={supabase} />
+      </div>
+      <div className="sm:w-[500px]">
+        <ChatReverseScroll supabase={supabase} />
       </div>
     </section>
   );
