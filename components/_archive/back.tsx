@@ -19,25 +19,31 @@ const deleteChat_AlertMessage = "Are you sure you want to delete this message?";
 function Chat({ supabase }: { supabase: any }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState<string>("");
-  const [avatars, setAvatars] = useState<Record<string, string>>({});
   const bottomRef = useRef<null | HTMLDivElement>(null);
+
+  //
+  const [data, setData] = useState<ChatMessage[]>([]);
+  const [avatars, setAvatars] = useState<Record<string, string>>({});
+  const [newMessage, setNewMessage] = useState<string>("");
   const [chatId, setChatId] = useState<string>(
     "4113f429-c4ad-42aa-b43f-0a2bcafaeaa5"
   );
+  const userContext = useUser();
 
-  const userContextValue = useUser();
-  const user = userContextValue ? userContextValue.user : null;
-  const userId = user?.id;
+  const userId = userContext ? userContext.user?.id : null;
+
+  const user = userContext ? userContext.user : null;
 
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchData() {
-      const data = await getData();
-      if (data) setAvatarsBySenderIds(data);
-    }
-    fetchData();
+    getData();
   }, []);
+
+  useEffect(() => {
+    setMessages(data.map((item) => item));
+    loadAvatars();
+  }, [data]);
 
   const getData = async () => {
     const { data, error } = await supabase
@@ -45,53 +51,57 @@ function Chat({ supabase }: { supabase: any }) {
       .select()
       .eq("chat_id", chatId);
     if (data) {
-      setMessages(data);
+      setData(data);
     }
+
     return data;
   };
 
-  const setAvatarsBySenderIds = async (messages: ChatMessage[]) => {
-    const senderIds = Array.from(
-      new Set(messages.map((item) => item.sender_id))
-    );
-    let avatarsObj: Record<string, string> = {};
+  const loadAvatars = async () => {
+    const senderIds = Array.from(new Set(data.map((item) => item.sender_id)));
     for (let id of senderIds) {
       const { data } = await supabase
         .from("profiles")
         .select("avatar")
         .eq("user_id", id);
       if (data && data.length > 0) {
-        avatarsObj[id] = data[0].avatar;
+        setAvatars((prevAvatars) => ({
+          ...prevAvatars,
+          [id]: data[0].avatar,
+        }));
       }
     }
-    setAvatars(avatarsObj);
   };
 
   const handleSend = async (e: any) => {
     e.preventDefault();
-    if (currentMessage.trim() !== "" && userId) {
+    if (currentMessage.trim() !== "" && user?.id) {
+      // Ensure user.id is defined
+      const formattedMessage = {
+        chat_id: chatId,
+        content: currentMessage.trim(),
+        sender_id: user.id,
+      };
       const { data, error } = await supabase
         .from("chat_messages")
         .insert({
-          sender_id: userId,
-          content: currentMessage.trim(),
+          sender_id: user?.id,
+          content: formattedMessage.content,
           chat_id: chatId,
         })
-        .single()
-        .select("*");
-
-      if (error) {
-        console.log(error);
-      } else {
-        // console.log(data);
-        setCurrentMessage("");
-      }
+        .single();
+      //   setMessages((prevMessages) => [...prevMessages, formattedMessage]);
+      setCurrentMessage("");
     }
   };
 
   useEffect(() => {
+    if (data) {
+      setData(data);
+    }
+
     const channel = supabase
-      .channel(`schema-db-changes-for-${chatId}`)
+      .channel("schema-db-changes-reverse-scroll")
       .on(
         "postgres_changes",
         {
@@ -99,14 +109,14 @@ function Chat({ supabase }: { supabase: any }) {
           schema: "public",
           table: "chat_messages",
         },
-        (payload: any) => setMessages((messages) => [...messages, payload.new])
+        (payload: any) => setData((messages) => [...messages, payload.new])
       )
       .subscribe();
 
     return () => {
       channel.unsubscribe();
     };
-  }, []);
+  }, [data]);
 
   // Scroll to bottom whenever the messages array changes
   useEffect(() => {
@@ -120,10 +130,11 @@ function Chat({ supabase }: { supabase: any }) {
       .from("chat_messages")
       .delete()
       .eq("id", id);
-    if (!error) {
-      setMessages((prevMessages) =>
-        prevMessages.filter((msg) => msg.id !== id)
-      );
+
+    if (error) {
+      console.error("Error deleting message", error);
+    } else {
+      getData();
     }
   };
 
@@ -131,9 +142,9 @@ function Chat({ supabase }: { supabase: any }) {
     <div>
       <div className="border border-gray-300 rounded-lg w-full  p-4 ">
         <div className="overflow-y-auto h-64 mb-4 border rounded lg border-gray-200 pb-4 px-4">
-          {messages.map((item) => (
+          {messages.map((item, index) => (
             <div
-              key={item.id}
+              key={index}
               className={`w-full mb-2 flex items-start ${
                 userId === item.sender_id ? "justify-end" : "justify-start"
               }`}
