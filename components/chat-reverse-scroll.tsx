@@ -78,7 +78,8 @@ function ChatReverseScroll({ supabase }: { supabase: any }) {
   //       .single();
   //   };
 
-  const handleSend = async () => {
+  const handleSend = async (e: any) => {
+    e.preventDefault();
     if (currentMessage.trim() !== "" && user?.id) {
       // Ensure user.id is defined
       const formattedMessage = {
@@ -144,19 +145,22 @@ function ChatReverseScroll({ supabase }: { supabase: any }) {
         <div ref={bottomRef} />
       </div>
       <div className="flex items-center">
-        <input
-          type="text"
-          className="border rounded-l p-2 flex-1"
-          value={currentMessage}
-          onChange={(e) => setCurrentMessage(e.target.value)}
-          placeholder="Type a message..."
-        />
-        <button
-          onClick={handleSend}
-          className="px-4 py-2 rounded-r bg-blue-500 text-white"
-        >
-          Send
-        </button>
+        <form action="" onSubmit={handleSend}>
+          <input
+            type="text"
+            className="border rounded-l p-2 flex-1"
+            value={currentMessage}
+            onChange={(e) => setCurrentMessage(e.target.value)}
+            placeholder="Type a message..."
+          />
+          <button
+            type="submit"
+            // onClick={handleSend}
+            className="px-4 py-2 rounded-r border border-black bg-black text-white"
+          >
+            Send
+          </button>
+        </form>
       </div>
     </div>
   );
