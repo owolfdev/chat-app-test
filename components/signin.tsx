@@ -56,7 +56,7 @@ export function SignInCard({
               />
             </div>
             <div className="flex flex-col space-y-1.5">
-              <Label htmlFor="password">Name</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 placeholder="Your password"
