@@ -90,8 +90,8 @@ function Chat({ supabase }: { supabase: any }) {
   };
 
   useEffect(() => {
-    const channel = supabase
-      .channel(`schema-db-changes-for-${chatId}`)
+    const insertChannel = supabase
+      .channel(`schema-db-insert-changes-for-${chatId}`)
       .on(
         "postgres_changes",
         {
@@ -101,10 +101,30 @@ function Chat({ supabase }: { supabase: any }) {
         },
         (payload: any) => setMessages((messages) => [...messages, payload.new])
       )
+
+      .subscribe();
+
+    const deleteChannel = supabase
+      .channel(`schema-db-delete-changes-for-${chatId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "chat_messages",
+        },
+        (payload: any) => {
+          // console.log("delete payload", payload);
+          setMessages((messages) =>
+            messages.filter((msg) => msg.id !== payload.old.id)
+          );
+        }
+      )
       .subscribe();
 
     return () => {
-      channel.unsubscribe();
+      insertChannel.unsubscribe();
+      deleteChannel.unsubscribe();
     };
   }, []);
 
@@ -121,9 +141,9 @@ function Chat({ supabase }: { supabase: any }) {
       .delete()
       .eq("id", id);
     if (!error) {
-      setMessages((prevMessages) =>
-        prevMessages.filter((msg) => msg.id !== id)
-      );
+      // setMessages((prevMessages) =>
+      //   prevMessages.filter((msg) => msg.id !== id)
+      // );
     }
   };
 
