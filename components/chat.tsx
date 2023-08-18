@@ -90,8 +90,8 @@ function Chat({ supabase }: { supabase: any }) {
   };
 
   useEffect(() => {
-    const insertChannel = supabase
-      .channel(`schema-db-insert-changes-for-${chatId}`)
+    const channel = supabase
+      .channel(`schema-db-changes-for-${chatId}`)
       .on(
         "postgres_changes",
         {
@@ -101,11 +101,6 @@ function Chat({ supabase }: { supabase: any }) {
         },
         (payload: any) => setMessages((messages) => [...messages, payload.new])
       )
-
-      .subscribe();
-
-    const deleteChannel = supabase
-      .channel(`schema-db-delete-changes-for-${chatId}`)
       .on(
         "postgres_changes",
         {
@@ -123,8 +118,7 @@ function Chat({ supabase }: { supabase: any }) {
       .subscribe();
 
     return () => {
-      insertChannel.unsubscribe();
-      deleteChannel.unsubscribe();
+      channel.unsubscribe();
     };
   }, []);
 
